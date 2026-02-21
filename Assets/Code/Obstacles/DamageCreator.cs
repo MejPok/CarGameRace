@@ -7,11 +7,13 @@ public class DamageCreator : MonoBehaviour
     public float baseDamage;
     public float CalculatedDamage;
     public float baseRadius;
+
     public virtual void CreateDamageArea(float radius)
     {
         Debug.Log("Creating damage area");
 
         Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, radius, 1 << 6);
+        ParticleCreator.instance.CreateParticle(transform.position, 0, 1f);
         Debug.Log("Colliders found: " + colliders.Length);
         if(colliders.Length > 0)
         {
