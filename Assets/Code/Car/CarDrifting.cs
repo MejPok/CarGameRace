@@ -4,15 +4,12 @@ using UnityEngine;
 
 public class CarDrifting : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
+    public float driftModifier;
+    public bool drifting;
     void Update()
     {
+        drifting = Input.GetButton("Jump");
+        
         
     }
 }

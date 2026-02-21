@@ -9,8 +9,10 @@ public class CarMove : MonoBehaviour
 {
     [Header("Movement")]
     public float enginePower = 15f;
-    public float brakePower = 20f;
-    public float maxSpeed = 20f;
+    public float brakePower = 30f;
+    public float reversePower = 8f;
+    public float maxForwardSpeed = 20f;
+    public float maxReverseSpeed = 7f;
 
     [Header("Steering")]
     public float turnSpeed = 200f;
@@ -22,9 +24,11 @@ public class CarMove : MonoBehaviour
     public float drag = 0.98f;     // global drag
 
     Rigidbody2D rb;
+    CarDrifting carDrift;
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
+        carDrift = GetComponent<CarDrifting>();
     }
 
     void FixedUpdate()
@@ -39,18 +43,26 @@ public class CarMove : MonoBehaviour
     }
 
     void ApplyEngine(float throttle)
-    {
-        Vector2 forward = transform.up;
+{
+    Vector2 forward = transform.up;
+    float forwardSpeed = Vector2.Dot(rb.velocity, forward);
 
-        if (throttle > 0)
-        {
-            rb.AddForce(forward * throttle * enginePower, ForceMode2D.Force);
-        }
-        else if (throttle < 0)
-        {
-            rb.AddForce(forward * throttle * brakePower, ForceMode2D.Force);
-        }
+    // Forward
+    if (throttle > 0)
+    {
+        rb.AddForce(forward * throttle * enginePower, ForceMode2D.Force);
     }
+    // Brake
+    else if (throttle < 0 && forwardSpeed > 0.5f)
+    {
+        rb.AddForce(-forward * brakePower, ForceMode2D.Force);
+    }
+    // Reverse
+    else if (throttle < 0 && forwardSpeed <= 0.5f)
+    {
+        rb.AddForce(forward * throttle * reversePower, ForceMode2D.Force);
+    }
+}
 
     void ApplySteering(float steer)
     {   
@@ -62,10 +74,11 @@ public class CarMove : MonoBehaviour
         
         float direction = forwardSpeed >= 0 ? 1f : -1f;
 
-        float speedFactor = rb.velocity.magnitude / maxSpeed;
+        float speedFactor = rb.velocity.magnitude / maxForwardSpeed;
         speedFactor = Mathf.Clamp01(speedFactor);
 
-        rb.rotation -= steer * direction * turnSpeed * speedFactor * Time.fixedDeltaTime;
+
+        rb.rotation -= steer * direction * turnSpeed * ( 1f - speedFactor) * Time.fixedDeltaTime;
     }
 
     void ApplyFriction()
@@ -76,7 +89,8 @@ public class CarMove : MonoBehaviour
         float forwardVel = Vector2.Dot(rb.velocity, forward);
         float sideVel = Vector2.Dot(rb.velocity, right);
 
-        sideVel *= grip; // kill sideways sliding
+        float currentGrip = carDrift.drifting ? carDrift.driftModifier : grip;
+        sideVel *= currentGrip; // kill sideways sliding
 
         rb.velocity =
             forward * forwardVel +
@@ -87,10 +101,14 @@ public class CarMove : MonoBehaviour
 
     void LimitSpeed()
     {
-        if (rb.velocity.magnitude > maxSpeed)
-        {
-            rb.velocity = rb.velocity.normalized * maxSpeed;
-        }
+        Vector2 forward = transform.up;
+        float forwardSpeed = Vector2.Dot(rb.velocity, forward);
+
+        if (forwardSpeed > maxForwardSpeed)
+            rb.velocity = forward * maxForwardSpeed;
+
+        if (forwardSpeed < -maxReverseSpeed)
+            rb.velocity = -forward * maxReverseSpeed;
     }
 
 }
